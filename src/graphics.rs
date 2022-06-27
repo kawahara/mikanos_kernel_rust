@@ -30,6 +30,12 @@ impl FrameBuffer {
 #[derive(Debug, Copy, Clone)]
 pub struct PixelColor(pub u8, pub u8, pub u8);
 
+#[derive(Copy, Clone, Debug)]
+pub struct Vector2D<T> {
+    pub x: T,
+    pub y: T,
+}
+
 #[derive(Copy, Clone)]
 pub struct Graphics {
     fb: FrameBuffer,
@@ -85,6 +91,35 @@ impl Graphics {
     pub fn write_string(&mut self, x: usize, y: usize, str: &str, color: &PixelColor) {
         for i in 0..str.len() {
             self.write_ascii(x + 8 * i, y, str.chars().nth(i).unwrap(), color);
+        }
+    }
+
+    pub fn fill_rectangle(
+        &mut self,
+        pos: &Vector2D<usize>,
+        size: &Vector2D<usize>,
+        color: &PixelColor,
+    ) {
+        for dy in 0..size.y {
+            for dx in 0..size.x {
+                self.write_pixel(pos.x + dx, pos.y + dy, color);
+            }
+        }
+    }
+
+    pub fn draw_rectangle(
+        &mut self,
+        pos: &Vector2D<usize>,
+        size: &Vector2D<usize>,
+        color: &PixelColor,
+    ) {
+        for dx in 0..size.x {
+            self.write_pixel(pos.x + dx, pos.y, color);
+            self.write_pixel(pos.x + dx, pos.y + size.y, color);
+        }
+        for dy in 0..size.y {
+            self.write_pixel(pos.x, pos.y + dy, color);
+            self.write_pixel(pos.x + size.x, pos.y + dy, color);
         }
     }
 }

@@ -4,10 +4,12 @@
 pub mod console;
 pub mod fonts;
 pub mod graphics;
+pub mod mouse_pointer;
 
 use console::Console;
 use core::panic::PanicInfo;
-use graphics::{FrameBuffer, Graphics, PixelColor};
+use graphics::{FrameBuffer, Graphics, PixelColor, Vector2D};
+use mouse_pointer::MousePointer;
 
 fn hlt_loop() -> ! {
     loop {
@@ -18,24 +20,53 @@ fn hlt_loop() -> ! {
 #[no_mangle]
 extern "C" fn kernel_main(fb: *mut FrameBuffer) {
     let fb_a = unsafe { *fb };
-    let bg_color = PixelColor(255, 255, 255);
-    let fg_color = PixelColor(0, 0, 0);
+    let bg_color = PixelColor(45, 118, 237);
+    let fg_color = PixelColor(255, 255, 255);
     let mut graphics = Graphics::new(fb_a);
-
-    for x in 0..fb_a.horizontal_resolution as usize {
-        for y in 0..fb_a.vertical_resolution as usize {
-            graphics.write_pixel(x, y, &PixelColor(255, 255, 255));
-        }
-    }
-
-    for x in 0..200 {
-        for y in 0..100 {
-            graphics.write_pixel(x, y, &PixelColor(0, 255, 0))
-        }
-    }
-
     let mut console = Console::new(&graphics, &fg_color, &bg_color);
-    console.put_string("Hello, MikanOS Rust!");
+    let mut mouse: MousePointer = MousePointer::new(&graphics);
+
+    graphics.fill_rectangle(
+        &Vector2D::<usize> { x: 0, y: 0 },
+        &Vector2D::<usize> {
+            x: fb_a.horizontal_resolution as usize,
+            y: (fb_a.vertical_resolution as usize) - 50,
+        },
+        &bg_color,
+    );
+    graphics.fill_rectangle(
+        &Vector2D::<usize> {
+            x: 0,
+            y: (fb_a.vertical_resolution as usize) - 50,
+        },
+        &Vector2D::<usize> {
+            x: fb_a.horizontal_resolution as usize,
+            y: 50,
+        },
+        &PixelColor(1, 8, 17),
+    );
+    graphics.fill_rectangle(
+        &Vector2D::<usize> {
+            x: 0,
+            y: (fb_a.vertical_resolution as usize) - 50,
+        },
+        &Vector2D::<usize> {
+            x: (fb_a.horizontal_resolution as usize) / 5,
+            y: 50,
+        },
+        &PixelColor(80, 80, 80),
+    );
+    graphics.draw_rectangle(
+        &Vector2D::<usize> {
+            x: 10,
+            y: (fb_a.vertical_resolution as usize) - 40,
+        },
+        &Vector2D::<usize> { x: 30, y: 30 },
+        &PixelColor(160, 160, 160),
+    );
+    mouse.write(&Vector2D::<usize> { x: 200, y: 100 });
+
+    console.put_string("Welcome to MikanOS Rust!!\n");
 
     hlt_loop();
 }
