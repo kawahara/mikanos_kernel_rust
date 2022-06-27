@@ -25,7 +25,6 @@ impl FrameBuffer {
     }
 }
 
-
 pub struct PixelColor(pub u8, pub u8, pub u8);
 
 pub struct Graphics {
@@ -43,9 +42,8 @@ impl Graphics {
         }
         let pixel_writer = match fb.format {
             PixelFormat::Rgb => write_pixel_rgb,
-            PixelFormat::Bgr => write_pixel_bgr
+            PixelFormat::Bgr => write_pixel_bgr,
         };
-
 
         Graphics { fb, pixel_writer }
     }

@@ -4,7 +4,7 @@
 pub mod graphics;
 
 use core::panic::PanicInfo;
-use graphics::{Graphics, FrameBuffer, PixelColor};
+use graphics::{FrameBuffer, Graphics, PixelColor};
 
 fn hlt_loop() -> ! {
     loop {
@@ -31,7 +31,6 @@ extern "C" fn kernel_main(fb: *mut FrameBuffer) {
 
     hlt_loop();
 }
-
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
