@@ -2,6 +2,7 @@
 #![no_main]
 
 pub mod graphics;
+pub mod fonts;
 
 use core::panic::PanicInfo;
 use graphics::{FrameBuffer, Graphics, PixelColor};
@@ -28,6 +29,8 @@ extern "C" fn kernel_main(fb: *mut FrameBuffer) {
             graphics.write_pixel(x, y, &PixelColor(0, 255, 0))
         }
     }
+
+    graphics.write_string(0, 0, "hello!", &PixelColor(0, 0, 0));
 
     hlt_loop();
 }

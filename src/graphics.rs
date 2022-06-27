@@ -1,3 +1,5 @@
+use crate::fonts::FONTS;
+
 #[derive(Debug, Copy, Clone)]
 #[repr(u32)]
 pub enum PixelFormat {
@@ -59,6 +61,28 @@ impl Graphics {
         let base = 4 * pixel_index;
         unsafe {
             (self.pixel_writer)(&mut self.fb, base, &color);
+        }
+    }
+
+    pub fn write_ascii(&mut self, x: usize, y: usize, c: char, color: &PixelColor) {
+        if c as u32 > 0x7f {
+            return;
+        }
+
+        let font: [u8; 16] = FONTS[c as usize];
+
+        for (dy, line) in font.iter().enumerate() {
+            for dx in 0..8 {
+                if (line << dx) & 0x80 != 0 {
+                    self.write_pixel(x + dx, y + dy, &color)
+                }
+            }
+        }
+    }
+
+    pub fn write_string(&mut self, x: usize, y: usize, str: &str, color: &PixelColor) {
+        for i in 0..str.len() {
+            self.write_ascii(x + 8 * i, y, str.chars().nth(i).unwrap(), color);
         }
     }
 }
