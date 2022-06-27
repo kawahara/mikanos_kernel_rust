@@ -4,8 +4,13 @@
 pub mod graphics;
 
 use core::panic::PanicInfo;
-use core::arch::asm;
 use graphics::{Graphics, FrameBuffer, PixelColor};
+
+fn hlt_loop () -> ! {
+    loop {
+        x86_64::instructions::hlt();
+    }
+}
 
 #[no_mangle]
 extern "C" fn kernel_main(fb: *mut FrameBuffer) {
@@ -24,12 +29,10 @@ extern "C" fn kernel_main(fb: *mut FrameBuffer) {
         }
     }
 
-    unsafe {
-        loop {
-            asm!("hlt");
-        }
-    }
+    hlt_loop();
 }
+
+
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
