@@ -27,8 +27,10 @@ impl FrameBuffer {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
 pub struct PixelColor(pub u8, pub u8, pub u8);
 
+#[derive(Copy, Clone)]
 pub struct Graphics {
     fb: FrameBuffer,
     pixel_writer: unsafe fn(&mut FrameBuffer, usize, &PixelColor),

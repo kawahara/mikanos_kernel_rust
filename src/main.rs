@@ -1,9 +1,11 @@
 #![no_std]
 #![no_main]
 
-pub mod graphics;
+pub mod console;
 pub mod fonts;
+pub mod graphics;
 
+use console::Console;
 use core::panic::PanicInfo;
 use graphics::{FrameBuffer, Graphics, PixelColor};
 
@@ -16,6 +18,8 @@ fn hlt_loop() -> ! {
 #[no_mangle]
 extern "C" fn kernel_main(fb: *mut FrameBuffer) {
     let fb_a = unsafe { *fb };
+    let bg_color = PixelColor(255, 255, 255);
+    let fg_color = PixelColor(0, 0, 0);
     let mut graphics = Graphics::new(fb_a);
 
     for x in 0..fb_a.horizontal_resolution as usize {
@@ -30,7 +34,8 @@ extern "C" fn kernel_main(fb: *mut FrameBuffer) {
         }
     }
 
-    graphics.write_string(0, 0, "hello!", &PixelColor(0, 0, 0));
+    let mut console = Console::new(&graphics, &fg_color, &bg_color);
+    console.put_string("Hello, MikanOS Rust!");
 
     hlt_loop();
 }
