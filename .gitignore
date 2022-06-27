@@ -1,1 +1,4 @@
 /target
+.idea/
+kernel.elf
+disk.img
