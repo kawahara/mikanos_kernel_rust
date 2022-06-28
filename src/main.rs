@@ -5,8 +5,10 @@ pub mod console;
 pub mod fonts;
 pub mod graphics;
 pub mod mouse_pointer;
+pub mod pci;
 
 use console::Console;
+use core::format_args;
 use core::panic::PanicInfo;
 use graphics::{FrameBuffer, Graphics, PixelColor, Vector2D};
 use mouse_pointer::MousePointer;
@@ -67,6 +69,12 @@ extern "C" fn kernel_main(fb: *mut FrameBuffer) {
     mouse.write(&Vector2D::<usize> { x: 200, y: 100 });
 
     console.put_string("Welcome to MikanOS Rust!!\n");
+    console.print(format_args!("Hello, Test\n"));
+
+    let devices = pci::scan_all_bus().expect("Failed to scan PCI devices");
+    for device in &devices {
+        console.print(format_args!("{:?}\n", device));
+    }
 
     hlt_loop();
 }

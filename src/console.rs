@@ -1,7 +1,9 @@
-pub const ROWS: usize = 20;
+pub const ROWS: usize = 40;
 pub const COLUMNS: usize = 80;
 
 use crate::graphics::{Graphics, PixelColor};
+use arrform::ArrForm;
+use core::fmt;
 
 pub struct Console {
     graphics: Graphics,
@@ -24,12 +26,22 @@ impl Console {
         }
     }
 
+    pub fn print(&mut self, args: fmt::Arguments) {
+        let mut af = ArrForm::<200>::new();
+        af.format(args).expect("Buffer overflow");
+        self.put_string(af.as_str())
+    }
+
     pub fn put_string(&mut self, str: &str) {
         for i in 0..str.len() {
             let c = str.chars().nth(i).unwrap();
             if c == '\n' {
                 self.new_line();
             } else {
+                if self.cursor_column >= COLUMNS {
+                    self.new_line()
+                }
+
                 self.graphics.write_ascii(
                     8 * self.cursor_column,
                     16 * self.cursor_row,
