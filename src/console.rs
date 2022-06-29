@@ -1,9 +1,12 @@
 pub const ROWS: usize = 40;
 pub const COLUMNS: usize = 80;
+pub const ARR_FORM_BUFFER: usize = COLUMNS * 10;
 
 use crate::graphics::{Graphics, PixelColor};
 use arrform::ArrForm;
 use core::fmt;
+use core::option::Option::{None, Some};
+use spin::mutex::SpinMutex;
 
 pub struct Console {
     graphics: Graphics,
@@ -12,6 +15,28 @@ pub struct Console {
     bg_color: PixelColor,
     cursor_row: usize,
     cursor_column: usize,
+}
+
+#[macro_export]
+macro_rules! printk {
+    ($($arg:tt)*) => ($crate::console::_printk(format_args!($($arg)*)));
+}
+
+static mut CONSOLE: Option<SpinMutex<Console>> = None;
+
+pub fn initialize_console(graphics: &Graphics, fg_color: &PixelColor, bg_color: &PixelColor) {
+    unsafe {
+        CONSOLE = Some(SpinMutex::new(Console::new(graphics, fg_color, bg_color)));
+    }
+}
+
+#[doc(hidden)]
+pub fn _printk(args: fmt::Arguments) {
+    unsafe {
+        if let Some(mut console) = CONSOLE.as_mut().unwrap().try_lock() {
+            console.print(args);
+        }
+    }
 }
 
 impl Console {
@@ -27,7 +52,7 @@ impl Console {
     }
 
     pub fn print(&mut self, args: fmt::Arguments) {
-        let mut af = ArrForm::<200>::new();
+        let mut af = ArrForm::<ARR_FORM_BUFFER>::new();
         af.format(args).expect("Buffer overflow");
         self.put_string(af.as_str())
     }

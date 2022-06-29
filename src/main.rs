@@ -7,8 +7,7 @@ pub mod graphics;
 pub mod mouse_pointer;
 pub mod pci;
 
-use console::Console;
-use core::format_args;
+use console::initialize_console;
 use core::panic::PanicInfo;
 use graphics::{FrameBuffer, Graphics, PixelColor, Vector2D};
 use mouse_pointer::MousePointer;
@@ -25,7 +24,7 @@ extern "C" fn kernel_main(fb: *mut FrameBuffer) {
     let bg_color = PixelColor(45, 118, 237);
     let fg_color = PixelColor(255, 255, 255);
     let mut graphics = Graphics::new(fb_a);
-    let mut console = Console::new(&graphics, &fg_color, &bg_color);
+    initialize_console(&graphics, &fg_color, &bg_color);
     let mut mouse: MousePointer = MousePointer::new(&graphics);
 
     graphics.fill_rectangle(
@@ -68,12 +67,12 @@ extern "C" fn kernel_main(fb: *mut FrameBuffer) {
     );
     mouse.write(&Vector2D::<usize> { x: 200, y: 100 });
 
-    console.put_string("Welcome to MikanOS Rust!!\n");
-    console.print(format_args!("Hello, Test\n"));
+    printk!("Welcome to MikanOS Rust!!\n");
+    printk!("Load PCI devices\n");
 
     let devices = pci::scan_all_bus().expect("Failed to scan PCI devices");
     for device in &devices {
-        console.print(format_args!("{:?}\n", device));
+        printk!("{:?}\n", device);
     }
 
     hlt_loop();
