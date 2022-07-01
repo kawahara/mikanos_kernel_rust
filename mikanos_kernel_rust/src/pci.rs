@@ -81,7 +81,7 @@ impl Device {
 
         // 64 bit address
         if bar_index >= 5 {
-            return Err(())
+            return Err(());
         }
 
         let bar_upper = read_data(self.addr(addr + 4));

@@ -1,4 +1,4 @@
-pub const ROWS: usize = 40;
+pub const ROWS: usize = 30;
 pub const COLUMNS: usize = 80;
 pub const ARR_FORM_BUFFER: usize = COLUMNS * 10;
 

@@ -6,7 +6,10 @@ type Result<T> = std::result::Result<T, Error>;
 fn build_lib() -> Result<()> {
     let out_dir = PathBuf::from(env::var("OUT_DIR")?);
     // default variable for mikanos-docker
-    let elf_dir = PathBuf::from(env::var("X86_64_ELF_DIR").unwrap_or("/home/vscode/osbook/devenv/x86_64-elf".to_string()));
+    let elf_dir = PathBuf::from(
+        env::var("X86_64_ELF_DIR").unwrap_or("/home/vscode/osbook/devenv/x86_64-elf".to_string()),
+    );
+    let edk_dir = PathBuf::from(env::var("EDK2DIR").unwrap_or("/home/vscode/edk2".to_string()));
 
     env::set_var("CC", "clang");
     env::set_var("CXX", "clang++");
@@ -17,6 +20,8 @@ fn build_lib() -> Result<()> {
         .cpp(true)
         .include(elf_dir.join("include"))
         .include(elf_dir.join("include/c++/v1"))
+        .include(edk_dir.join("MdePkg/Include"))
+        .include(edk_dir.join("MdePkg/Include/X64"))
         .include("./cxx_src/")
         .files(files)
         .define("__ELF__", None)

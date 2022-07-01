@@ -2,6 +2,7 @@
 #![no_main]
 
 pub mod console;
+pub mod cxx_support;
 pub mod fonts;
 pub mod graphics;
 pub mod mouse_pointer;
@@ -10,13 +11,11 @@ pub mod pci;
 use console::initialize_console;
 use core::panic::PanicInfo;
 use graphics::{FrameBuffer, Graphics, PixelColor, Vector2D};
-use mouse_pointer::MousePointer;
 use mikanos_usb_driver as usb;
+use mouse_pointer::MousePointer;
 
-fn hlt_loop() -> ! {
-    loop {
-        x86_64::instructions::hlt();
-    }
+extern "C" fn mouse_observer(displacement_x: i8, displacement_y: i8) {
+    printk!("x={}, y={}\n", displacement_x, displacement_y);
 }
 
 #[no_mangle]
@@ -75,7 +74,10 @@ extern "C" fn kernel_main(fb: *mut FrameBuffer) {
     let devices = pci::scan_all_bus().expect("Failed to scan PCI devices");
     for device in &devices {
         printk!("{}\n", device);
-        if ((device.class_code >> 24) & 0xff) as u8 == 0x0c && ((device.class_code >> 16) & 0xff) as u8 == 0x03 && ((device.class_code >> 8) & 0xff) as u8 == 0x30 {
+        if ((device.class_code >> 24) & 0xff) as u8 == 0x0c
+            && ((device.class_code >> 16) & 0xff) as u8 == 0x03
+            && ((device.class_code >> 8) & 0xff) as u8 == 0x30
+        {
             xhc_device = Some(device);
             if device.vendor_id == 0x8086 {
                 break;
@@ -90,12 +92,19 @@ extern "C" fn kernel_main(fb: *mut FrameBuffer) {
     let xhc_mmio_base = xhc_bar & !0xf;
     printk!("xHC mmio_base = {:08x}\n", xhc_mmio_base);
 
-    unsafe {
-        let xhc = usb::xhc_controller_new(xhc_mmio_base);
-        xhc.init();
+    let xhc = unsafe { usb::XhciController::new(xhc_mmio_base) };
+    if xhc_device.vendor_id == 0x8086 {
+        // TODO: switch EHCI to XHCI
     }
-
-    hlt_loop();
+    xhc.init();
+    printk!("xHC init\n");
+    xhc.run();
+    printk!("xHC starting\n");
+    xhc.configure_connected_ports();
+    usb::HidMouseDriver::set_default_observer(mouse_observer);
+    loop {
+        xhc.process_event();
+    }
 }
 
 #[panic_handler]
