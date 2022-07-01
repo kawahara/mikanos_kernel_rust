@@ -5,17 +5,26 @@ pub mod console;
 pub mod cxx_support;
 pub mod fonts;
 pub mod graphics;
-pub mod mouse_pointer;
+pub mod mouse;
 pub mod pci;
 
 use console::initialize_console;
+use core::option::Option::{None, Some};
 use core::panic::PanicInfo;
 use graphics::{FrameBuffer, Graphics, PixelColor, Vector2D};
 use mikanos_usb_driver as usb;
-use mouse_pointer::MousePointer;
+use mouse::MouseCursor;
+
+static mut CURSOR: Option<MouseCursor> = None;
 
 extern "C" fn mouse_observer(displacement_x: i8, displacement_y: i8) {
-    printk!("x={}, y={}\n", displacement_x, displacement_y);
+    // printk!("{}, {}\n", displacement_x, displacement_y);
+    unsafe {
+        CURSOR.as_mut().unwrap().move_relative(&Vector2D::<isize> {
+            x: displacement_x as isize,
+            y: displacement_y as isize,
+        });
+    }
 }
 
 #[no_mangle]
@@ -25,7 +34,6 @@ extern "C" fn kernel_main(fb: *mut FrameBuffer) {
     let fg_color = PixelColor(255, 255, 255);
     let mut graphics = Graphics::new(fb_a);
     initialize_console(&graphics, &fg_color, &bg_color);
-    let mut mouse: MousePointer = MousePointer::new(&graphics);
 
     graphics.fill_rectangle(
         &Vector2D::<usize> { x: 0, y: 0 },
@@ -65,7 +73,14 @@ extern "C" fn kernel_main(fb: *mut FrameBuffer) {
         &Vector2D::<usize> { x: 30, y: 30 },
         &PixelColor(160, 160, 160),
     );
-    mouse.write(&Vector2D::<usize> { x: 200, y: 100 });
+
+    unsafe {
+        CURSOR = Some(MouseCursor::new(
+            &graphics,
+            &Vector2D::<usize> { x: 200, y: 100 },
+            &bg_color,
+        ));
+    }
 
     printk!("Welcome to MikanOS Rust!!\n");
     printk!("Load PCI devices\n");
@@ -109,5 +124,7 @@ extern "C" fn kernel_main(fb: *mut FrameBuffer) {
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
+    printk!("Panic!!");
+
     loop {}
 }

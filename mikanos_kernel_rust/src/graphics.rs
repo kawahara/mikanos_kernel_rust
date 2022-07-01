@@ -60,10 +60,12 @@ impl Graphics {
 
     pub fn write_pixel(&mut self, x: usize, y: usize, color: &PixelColor) {
         if x > self.fb.horizontal_resolution as usize {
-            panic!("bad x coord");
+            // bad x coord
+            return;
         }
         if y > self.fb.vertical_resolution as usize {
-            panic!("bad y coord");
+            // bad y coord
+            return;
         }
         let pixel_index = y * (self.fb.pixels_per_scan_line as usize) + x;
         let base = 4 * pixel_index;
