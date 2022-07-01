@@ -61,11 +61,39 @@ pub struct Device {
     pub header_type: u8,
 }
 
+impl Device {
+    fn addr(&self, reg_addr: u8) -> ConfigAddress {
+        ConfigAddress::new(self.bus, self.device, self.function, reg_addr)
+    }
+
+    pub fn read_bar(&self, bar_index: u8) -> Result<u64, ()> {
+        if bar_index >= 6 {
+            return Err(());
+        }
+
+        let addr = 0x10 + 4 * bar_index;
+        let bar = read_data(self.addr(addr));
+
+        // 32 bit address
+        if (bar & 4) == 0 {
+            return Ok(u64::from(bar));
+        }
+
+        // 64 bit address
+        if bar_index >= 5 {
+            return Err(())
+        }
+
+        let bar_upper = read_data(self.addr(addr + 4));
+        Ok(u64::from(bar) | u64::from(bar_upper) << 32)
+    }
+}
+
 impl core::fmt::Display for Device {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
-            "{:02x}.{:02x}.{:02x} vend={:04x}, class={}, head={:02x}",
+            "{:02x}.{:02x}.{:02x} vend={:04x}, class={:08x}, head={:02x}",
             self.bus, self.device, self.function, self.vendor_id, self.class_code, self.header_type
         )
     }

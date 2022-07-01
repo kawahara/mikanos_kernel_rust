@@ -1,4 +1,5 @@
 [workspace]
 members = [
-    "mikanos_kernel_rust"
+    "mikanos_kernel_rust",
+    "mikanos_usb_driver",
 ]
