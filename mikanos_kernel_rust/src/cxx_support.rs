@@ -1,4 +1,25 @@
-use core::ptr;
+use crate::logger;
+use crate::logger::Level;
+use core::{ptr, slice, str};
+
+#[no_mangle]
+extern "C" fn mikanos_log(level: i32, msg: *const u8, msg_len: usize) -> i32 {
+    let level = match level {
+        3 => Level::Error,
+        4 => Level::Warn,
+        7 => Level::Debug,
+        8 => Level::Trace,
+        _ => Level::Info,
+    };
+
+    unsafe {
+        let msg = slice::from_raw_parts(msg, msg_len);
+        let msg = str::from_utf8_unchecked(msg);
+        logger::_log(level, format_args!("{}", msg));
+    }
+
+    msg_len as i32
+}
 
 extern "C" {
     fn __errno() -> *mut i32;

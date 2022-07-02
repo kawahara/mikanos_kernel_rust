@@ -5,6 +5,7 @@ pub mod console;
 pub mod cxx_support;
 pub mod fonts;
 pub mod graphics;
+pub mod logger;
 pub mod mouse;
 pub mod pci;
 
@@ -12,6 +13,7 @@ use console::initialize_console;
 use core::option::Option::{None, Some};
 use core::panic::PanicInfo;
 use graphics::{FrameBuffer, Graphics, PixelColor, Vector2D};
+use logger::Level as LogLevel;
 use mikanos_usb_driver as usb;
 use mouse::MouseCursor;
 
@@ -83,12 +85,12 @@ extern "C" fn kernel_main(fb: *mut FrameBuffer) {
     }
 
     printk!("Welcome to MikanOS Rust!!\n");
-    printk!("Load PCI devices\n");
+    log!(LogLevel::Info, "Load PCI devices\n");
 
     let mut xhc_device = None;
     let devices = pci::scan_all_bus().expect("Failed to scan PCI devices");
     for device in &devices {
-        printk!("{}\n", device);
+        log!(LogLevel::Info, "{}\n", device);
         if ((device.class_code >> 24) & 0xff) as u8 == 0x0c
             && ((device.class_code >> 16) & 0xff) as u8 == 0x03
             && ((device.class_code >> 8) & 0xff) as u8 == 0x30
@@ -101,20 +103,20 @@ extern "C" fn kernel_main(fb: *mut FrameBuffer) {
     }
     xhc_device.expect("XHC Device is not found");
     let xhc_device = xhc_device.unwrap();
-    printk!("xHC has been found: {}\n", xhc_device);
+    log!(LogLevel::Info, "xHC has been found: {}\n", xhc_device);
     let xhc_bar = xhc_device.read_bar(0).expect("Read bar error");
-    printk!("xHC BAR0 = {:08x}\n", xhc_bar);
+    log!(LogLevel::Info, "xHC BAR0 = {:08x}\n", xhc_bar);
     let xhc_mmio_base = xhc_bar & !0xf;
-    printk!("xHC mmio_base = {:08x}\n", xhc_mmio_base);
+    log!(LogLevel::Info, "xHC mmio_base = {:08x}\n", xhc_mmio_base);
 
     let xhc = unsafe { usb::XhciController::new(xhc_mmio_base) };
     if xhc_device.vendor_id == 0x8086 {
         // TODO: switch EHCI to XHCI
     }
     xhc.init();
-    printk!("xHC init\n");
+    log!(LogLevel::Info, "xHC init\n");
     xhc.run();
-    printk!("xHC starting\n");
+    log!(LogLevel::Info, "xHC starting\n");
     xhc.configure_connected_ports();
     usb::HidMouseDriver::set_default_observer(mouse_observer);
     loop {
@@ -123,8 +125,8 @@ extern "C" fn kernel_main(fb: *mut FrameBuffer) {
 }
 
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    printk!("Panic!!");
+fn panic(info: &PanicInfo) -> ! {
+    printk!("Panic!! {}", info);
 
     loop {}
 }
