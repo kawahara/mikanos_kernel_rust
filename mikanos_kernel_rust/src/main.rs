@@ -16,6 +16,7 @@ use graphics::{FrameBuffer, Graphics, PixelColor, Vector2D};
 use logger::Level as LogLevel;
 use mikanos_usb_driver as usb;
 use mouse::MouseCursor;
+use pci::switch_ehci_to_xhci;
 
 static mut CURSOR: Option<MouseCursor> = None;
 
@@ -111,7 +112,7 @@ extern "C" fn kernel_main(fb: *mut FrameBuffer) {
 
     let xhc = unsafe { usb::XhciController::new(xhc_mmio_base) };
     if xhc_device.vendor_id == 0x8086 {
-        // TODO: switch EHCI to XHCI
+        switch_ehci_to_xhci(&xhc_device, &devices);
     }
     xhc.init();
     log!(LogLevel::Info, "xHC init\n");

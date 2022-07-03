@@ -1,6 +1,8 @@
 use arrayvec::ArrayVec;
 use core::fmt::Formatter;
 // To use set_bits and set_bit for numbers
+use crate::log;
+use crate::logger::Level as LogLevel;
 use bit_field::BitField;
 use x86_64::instructions::port::Port;
 
@@ -87,6 +89,16 @@ impl Device {
         let bar_upper = read_data(self.addr(addr + 4));
         Ok(u64::from(bar) | u64::from(bar_upper) << 32)
     }
+
+    pub fn read_conf_reg(&self, reg_addr: u8) -> u32 {
+        let addr = ConfigAddress::new(self.bus, self.device, self.function, reg_addr);
+        read_data(addr)
+    }
+
+    pub fn write_conf_reg(&self, reg_addr: u8, value: u32) {
+        let addr = ConfigAddress::new(self.bus, self.device, self.function, reg_addr);
+        write_data(addr, value)
+    }
 }
 
 impl core::fmt::Display for Device {
@@ -106,6 +118,14 @@ fn read_data(addr: ConfigAddress) -> u32 {
     unsafe {
         ports.addr.write(addr.0);
         ports.data.read()
+    }
+}
+
+fn write_data(addr: ConfigAddress, value: u32) {
+    let mut ports = CONFIG.0.lock();
+    unsafe {
+        ports.addr.write(addr.0);
+        ports.data.write(value)
     }
 }
 
@@ -209,4 +229,40 @@ pub fn scan_all_bus() -> Result<Devices, ()> {
     }
 
     Ok(devices)
+}
+
+pub fn switch_ehci_to_xhci(xhc_device: &Device, devices: &Devices) {
+    let mut found_echi_device = false;
+    for device in devices {
+        // Find EHCI device
+        if ((device.class_code >> 24) & 0xff) as u8 == 0x0c
+            && ((device.class_code >> 16) & 0xff) as u8 == 0x03
+            && ((device.class_code >> 8) & 0xff) as u8 == 0x20
+        {
+            found_echi_device = true;
+        }
+    }
+
+    if !found_echi_device {
+        // not found
+        return;
+    }
+
+    // USB3PRM
+    let supported_ports = xhc_device.read_conf_reg(0xdc);
+
+    // USB3_PSSEN
+    xhc_device.write_conf_reg(0xd8, supported_ports);
+
+    // XUSB2PRM
+    let ehci2xhci_ports = xhc_device.read_conf_reg(0xd4);
+
+    // XUSB2PR
+    xhc_device.write_conf_reg(0xd0, ehci2xhci_ports);
+    log!(
+        LogLevel::Debug,
+        "SwitchEhci2Xhci: SS = {:2x}, xHCI = {:2x}\n",
+        supported_ports,
+        ehci2xhci_ports
+    );
 }
