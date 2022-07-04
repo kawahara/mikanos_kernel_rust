@@ -1,7 +1,11 @@
 use crate::graphics::{Graphics, PixelColor, Vector2D};
+use crate::log;
+use crate::logger::Level as LogLevel;
 
 const CURSOR_WIDTH: usize = 15;
 const CURSOR_HEIGHT: usize = 24;
+
+static mut CURSOR: Option<MouseCursor> = None;
 
 const POINTER: [&str; CURSOR_HEIGHT] = [
     "@              ",
@@ -29,6 +33,22 @@ const POINTER: [&str; CURSOR_HEIGHT] = [
     "          @.@  ",
     "          @@@  ",
 ];
+
+pub extern "C" fn mouse_observer(displacement_x: i8, displacement_y: i8) {
+    log!(LogLevel::Debug, "{}, {}\n", displacement_x, displacement_y);
+    unsafe {
+        CURSOR.as_mut().unwrap().move_relative(&Vector2D::<isize> {
+            x: displacement_x as isize,
+            y: displacement_y as isize,
+        });
+    }
+}
+
+pub fn init(graphics: &Graphics, initial_pos: &Vector2D<usize>, erase_color: &PixelColor) {
+    unsafe {
+        CURSOR = Some(MouseCursor::new(graphics, initial_pos, erase_color));
+    }
+}
 
 pub struct MouseCursor {
     graphics: Graphics,

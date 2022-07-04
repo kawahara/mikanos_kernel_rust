@@ -1,37 +1,33 @@
 #![no_std]
 #![no_main]
+#![feature(abi_x86_interrupt)]
 
 pub mod console;
 pub mod cxx_support;
 pub mod fonts;
 pub mod graphics;
+pub mod interrupt;
 pub mod logger;
 pub mod mouse;
 pub mod pci;
+pub mod sync;
+pub mod xhc;
 
 use console::initialize_console;
-use core::option::Option::{None, Some};
 use core::panic::PanicInfo;
 use graphics::{FrameBuffer, Graphics, PixelColor, Vector2D};
 use logger::Level as LogLevel;
-use mikanos_usb_driver as usb;
-use mouse::MouseCursor;
-use pci::switch_ehci_to_xhci;
 
-static mut CURSOR: Option<MouseCursor> = None;
-
-extern "C" fn mouse_observer(displacement_x: i8, displacement_y: i8) {
-    // printk!("{}, {}\n", displacement_x, displacement_y);
-    unsafe {
-        CURSOR.as_mut().unwrap().move_relative(&Vector2D::<isize> {
-            x: displacement_x as isize,
-            y: displacement_y as isize,
-        });
+fn hlt_loop() {
+    loop {
+        x86_64::instructions::hlt();
     }
 }
 
 #[no_mangle]
 extern "C" fn kernel_main(fb: *mut FrameBuffer) {
+    logger::set_level(logger::Level::Info);
+
     let fb_a = unsafe { *fb };
     let bg_color = PixelColor(45, 118, 237);
     let fg_color = PixelColor(255, 255, 255);
@@ -76,53 +72,17 @@ extern "C" fn kernel_main(fb: *mut FrameBuffer) {
         &Vector2D::<usize> { x: 30, y: 30 },
         &PixelColor(160, 160, 160),
     );
-
-    unsafe {
-        CURSOR = Some(MouseCursor::new(
-            &graphics,
-            &Vector2D::<usize> { x: 200, y: 100 },
-            &bg_color,
-        ));
-    }
+    mouse::init(&graphics, &&Vector2D::<usize> { x: 200, y: 100 }, &bg_color);
 
     printk!("Welcome to MikanOS Rust!!\n");
+
+    interrupt::init();
     log!(LogLevel::Info, "Load PCI devices\n");
-
-    let mut xhc_device = None;
     let devices = pci::scan_all_bus().expect("Failed to scan PCI devices");
-    for device in &devices {
-        log!(LogLevel::Info, "{}\n", device);
-        if ((device.class_code >> 24) & 0xff) as u8 == 0x0c
-            && ((device.class_code >> 16) & 0xff) as u8 == 0x03
-            && ((device.class_code >> 8) & 0xff) as u8 == 0x30
-        {
-            xhc_device = Some(device);
-            if device.vendor_id == 0x8086 {
-                break;
-            }
-        }
-    }
-    xhc_device.expect("XHC Device is not found");
-    let xhc_device = xhc_device.unwrap();
-    log!(LogLevel::Info, "xHC has been found: {}\n", xhc_device);
-    let xhc_bar = xhc_device.read_bar(0).expect("Read bar error");
-    log!(LogLevel::Info, "xHC BAR0 = {:08x}\n", xhc_bar);
-    let xhc_mmio_base = xhc_bar & !0xf;
-    log!(LogLevel::Info, "xHC mmio_base = {:08x}\n", xhc_mmio_base);
+    xhc::init(&devices).expect("Failed to init xHC device");
+    x86_64::instructions::interrupts::enable();
 
-    let xhc = unsafe { usb::XhciController::new(xhc_mmio_base) };
-    if xhc_device.vendor_id == 0x8086 {
-        switch_ehci_to_xhci(&xhc_device, &devices);
-    }
-    xhc.init();
-    log!(LogLevel::Info, "xHC init\n");
-    xhc.run();
-    log!(LogLevel::Info, "xHC starting\n");
-    xhc.configure_connected_ports();
-    usb::HidMouseDriver::set_default_observer(mouse_observer);
-    loop {
-        xhc.process_event();
-    }
+    hlt_loop();
 }
 
 #[panic_handler]

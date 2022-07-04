@@ -10,6 +10,7 @@ extern "C" {
     fn cxx_xhci_controller_configure_connected_ports(xhc: *mut XhciController);
     fn cxx_xhci_hid_mouse_driver_set_default_observer(observer: MouseObserverType);
     fn cxx_xhci_controller_process_event(xhc: *mut XhciController) -> i32;
+    fn cxx_xhci_controller_has_event(xhc: *mut XhciController) -> bool;
 }
 
 pub enum XhciController {}
@@ -33,6 +34,10 @@ impl XhciController {
 
     pub fn configure_connected_ports(&mut self) {
         unsafe { cxx_xhci_controller_configure_connected_ports(self) }
+    }
+
+    pub fn has_event(&mut self) -> bool {
+        unsafe { cxx_xhci_controller_has_event(self) }
     }
 }
 

@@ -11,4 +11,6 @@ arrform = "0.1.1"
 bit_field = "0.10.1"
 spin = "0.9.3"
 x86_64 = "0.14.9"
+conquer-once = { version = "0.3.2", default-features = false}
 mikanos_usb_driver = { path = "../mikanos_usb_driver" }
+volatile = "0.4.5"
