@@ -27,7 +27,7 @@ fn hlt_loop() {
 }
 
 #[no_mangle]
-extern "C" fn kernel_main(fb: *mut FrameBuffer, mc: *const MemoryMap) {
+extern "C" fn kernel_main2(fb: *mut FrameBuffer, mc: *const MemoryMap) {
     logger::set_level(LogLevel::Info);
 
     let fb_a = unsafe { *fb };
