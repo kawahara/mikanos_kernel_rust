@@ -8,15 +8,17 @@ pub mod fonts;
 pub mod graphics;
 pub mod interrupt;
 pub mod logger;
+pub mod memory;
 pub mod mouse;
 pub mod pci;
 pub mod sync;
 pub mod xhc;
 
-use console::initialize_console;
+use crate::console::initialize_console;
+use crate::graphics::{FrameBuffer, Graphics, PixelColor, Vector2D};
+use crate::logger::Level as LogLevel;
+use crate::memory::MemoryMap;
 use core::panic::PanicInfo;
-use graphics::{FrameBuffer, Graphics, PixelColor, Vector2D};
-use logger::Level as LogLevel;
 
 fn hlt_loop() {
     loop {
@@ -25,8 +27,8 @@ fn hlt_loop() {
 }
 
 #[no_mangle]
-extern "C" fn kernel_main(fb: *mut FrameBuffer) {
-    logger::set_level(logger::Level::Info);
+extern "C" fn kernel_main(fb: *mut FrameBuffer, mc: MemoryMap) {
+    logger::set_level(LogLevel::Info);
 
     let fb_a = unsafe { *fb };
     let bg_color = PixelColor(45, 118, 237);
@@ -75,6 +77,7 @@ extern "C" fn kernel_main(fb: *mut FrameBuffer) {
     mouse::init(&graphics, &&Vector2D::<usize> { x: 200, y: 100 }, &bg_color);
 
     printk!("Welcome to MikanOS Rust!!\n");
+    log!(LogLevel::Info, "{:?}\n", mc);
 
     interrupt::init();
     log!(LogLevel::Info, "Load PCI devices\n");
