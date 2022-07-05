@@ -17,7 +17,7 @@ pub mod xhc;
 use crate::console::initialize_console;
 use crate::graphics::{FrameBuffer, Graphics, PixelColor, Vector2D};
 use crate::logger::Level as LogLevel;
-use crate::memory::MemoryMap;
+use crate::memory::{MemoryDescriptor, MemoryMap, MemoryType};
 use core::panic::PanicInfo;
 
 fn hlt_loop() {
@@ -27,7 +27,7 @@ fn hlt_loop() {
 }
 
 #[no_mangle]
-extern "C" fn kernel_main(fb: *mut FrameBuffer, mc: MemoryMap) {
+extern "C" fn kernel_main(fb: *mut FrameBuffer, mc: *const MemoryMap) {
     logger::set_level(LogLevel::Info);
 
     let fb_a = unsafe { *fb };
@@ -77,7 +77,19 @@ extern "C" fn kernel_main(fb: *mut FrameBuffer, mc: MemoryMap) {
     mouse::init(&graphics, &&Vector2D::<usize> { x: 200, y: 100 }, &bg_color);
 
     printk!("Welcome to MikanOS Rust!!\n");
-    log!(LogLevel::Info, "{:?}\n", mc);
+    let mc = unsafe { *mc };
+    printk!("{:?}\n", mc);
+    let mut iter = mc.buffer;
+    while iter < unsafe { mc.buffer.add(mc.map_size as usize) } {
+        let desc = unsafe { *(iter as *const MemoryDescriptor) };
+        if desc.memory_type == MemoryType::EfiBootServicesCode
+            || desc.memory_type == MemoryType::EfiBootServicesData
+            || desc.memory_type == MemoryType::EfiConventionalMemory
+        {
+            printk!("{}\n", desc);
+        }
+        iter = unsafe { iter.add(mc.descriptor_size as usize) };
+    }
 
     interrupt::init();
     log!(LogLevel::Info, "Load PCI devices\n");
