@@ -22,6 +22,15 @@ pub struct MemoryDescriptor {
     pub attribute: u64,
 }
 
+impl MemoryDescriptor {
+    pub fn physical_end(&self) -> *const usize {
+        unsafe {
+            self.physical_start
+                .add(self.number_of_pages as usize * 4096)
+        }
+    }
+}
+
 impl core::fmt::Display for MemoryDescriptor {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         write!(
@@ -29,10 +38,7 @@ impl core::fmt::Display for MemoryDescriptor {
             "type={:?}, phys = {:?} - {:?}, pages = {}, attr = {:08x}",
             self.memory_type,
             self.physical_start,
-            unsafe {
-                self.physical_start
-                    .add((self.number_of_pages as usize) * 4096 - 1)
-            },
+            unsafe { self.physical_end().sub(1) },
             self.number_of_pages,
             self.attribute
         )

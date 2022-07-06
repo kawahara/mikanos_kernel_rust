@@ -9,6 +9,7 @@ pub mod graphics;
 pub mod interrupt;
 pub mod logger;
 pub mod memory;
+pub mod memory_manager;
 pub mod mouse;
 pub mod paging;
 pub mod pci;
@@ -20,6 +21,7 @@ use crate::console::initialize_console;
 use crate::graphics::{FrameBuffer, Graphics, PixelColor, Vector2D};
 use crate::logger::Level as LogLevel;
 use crate::memory::{MemoryDescriptor, MemoryMap, MemoryType};
+use crate::memory_manager::{BitmapMemoryManager, FrameId};
 use core::panic::PanicInfo;
 
 fn hlt_loop() {
@@ -28,11 +30,10 @@ fn hlt_loop() {
     }
 }
 
+static mut MEMORY_MANAGER: BitmapMemoryManager = BitmapMemoryManager::new();
+
 #[no_mangle]
 extern "C" fn kernel_main2(fb: *mut FrameBuffer, mc: *const MemoryMap) {
-    segments::init();
-    paging::init();
-
     let fb_a = unsafe { *fb };
     let bg_color = PixelColor(45, 118, 237);
     let fg_color = PixelColor(255, 255, 255);
@@ -81,18 +82,48 @@ extern "C" fn kernel_main2(fb: *mut FrameBuffer, mc: *const MemoryMap) {
     mouse::init(&graphics, &&Vector2D::<usize> { x: 200, y: 100 }, &bg_color);
 
     printk!("Welcome to MikanOS Rust!!\n");
+
+    segments::init();
+    paging::init();
     let mc = unsafe { *mc };
-    printk!("{:?}\n", mc);
+    // setup memory manager
+    let mut phys_available_end: usize = 0;
     let mut iter = mc.buffer;
     while iter < unsafe { mc.buffer.add(mc.map_size as usize) } {
         let desc = unsafe { *(iter as *const MemoryDescriptor) };
+        let phys_start = desc.physical_start as usize;
+        let phys_end = desc.physical_end() as usize;
+
+        if phys_available_end < phys_start {
+            unsafe {
+                MEMORY_MANAGER.mark_allocated_in_bytes(
+                    &FrameId::from_physical_address(phys_available_end),
+                    phys_start - phys_available_end,
+                )
+            }
+        }
+
         if desc.memory_type == MemoryType::EfiBootServicesCode
             || desc.memory_type == MemoryType::EfiBootServicesData
             || desc.memory_type == MemoryType::EfiConventionalMemory
         {
-            printk!("{}\n", desc);
+            phys_available_end = phys_end;
+        } else {
+            unsafe {
+                MEMORY_MANAGER.mark_allocated_in_bytes(
+                    &FrameId::from_physical_address(phys_start),
+                    phys_end - phys_start,
+                )
+            }
         }
+
         iter = unsafe { iter.add(mc.descriptor_size as usize) };
+    }
+    unsafe {
+        MEMORY_MANAGER.set_memory_range(
+            FrameId::MIN,
+            FrameId::from_physical_address(phys_available_end),
+        );
     }
 
     interrupt::init();
