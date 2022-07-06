@@ -11,6 +11,7 @@ pub mod logger;
 pub mod memory;
 pub mod mouse;
 pub mod pci;
+pub mod segments;
 pub mod sync;
 pub mod xhc;
 
@@ -28,13 +29,14 @@ fn hlt_loop() {
 
 #[no_mangle]
 extern "C" fn kernel_main2(fb: *mut FrameBuffer, mc: *const MemoryMap) {
-    logger::set_level(LogLevel::Info);
+    segments::init();
 
     let fb_a = unsafe { *fb };
     let bg_color = PixelColor(45, 118, 237);
     let fg_color = PixelColor(255, 255, 255);
     let mut graphics = Graphics::new(fb_a);
     initialize_console(&graphics, &fg_color, &bg_color);
+    logger::set_level(LogLevel::Info);
 
     graphics.fill_rectangle(
         &Vector2D::<usize> { x: 0, y: 0 },

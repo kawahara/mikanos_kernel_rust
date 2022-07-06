@@ -14,3 +14,4 @@ x86_64 = "0.14.9"
 conquer-once = { version = "0.3.2", default-features = false}
 mikanos_usb_driver = { path = "../mikanos_usb_driver" }
 volatile = "0.4.5"
+modular-bitfield = "0.11.2"
