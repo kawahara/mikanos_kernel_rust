@@ -49,3 +49,7 @@ set_ds_all:
   mov gs, di
   ret
 
+global set_cr3 ; set_cr3(address: u64)
+set_cr3:
+  mov cr3, rdi
+  ret

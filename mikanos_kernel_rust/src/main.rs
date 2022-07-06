@@ -10,6 +10,7 @@ pub mod interrupt;
 pub mod logger;
 pub mod memory;
 pub mod mouse;
+pub mod paging;
 pub mod pci;
 pub mod segments;
 pub mod sync;
@@ -30,6 +31,7 @@ fn hlt_loop() {
 #[no_mangle]
 extern "C" fn kernel_main2(fb: *mut FrameBuffer, mc: *const MemoryMap) {
     segments::init();
+    paging::init();
 
     let fb_a = unsafe { *fb };
     let bg_color = PixelColor(45, 118, 237);
