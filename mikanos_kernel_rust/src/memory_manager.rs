@@ -1,4 +1,4 @@
-use crate::{printk, MemoryDescriptor, MemoryMap, MemoryType};
+use crate::{MemoryDescriptor, MemoryMap, MemoryType};
 use core::mem;
 use spin::mutex::{SpinMutex, SpinMutexGuard};
 

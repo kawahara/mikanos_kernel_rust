@@ -6,12 +6,13 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-arrayvec = {version = "0.7.2", default-features = false}
+arrayvec = { version = "0.7.2", default-features = false }
 arrform = "0.1.1"
 bit_field = "0.10.1"
 spin = "0.9.3"
 x86_64 = "0.14.9"
-conquer-once = { version = "0.3.2", default-features = false}
+conquer-once = { version = "0.3.2", default-features = false }
 mikanos_usb_driver = { path = "../mikanos_usb_driver" }
 volatile = "0.4.5"
 modular-bitfield = "0.11.2"
+crossbeam-queue = { version = "0.3.5", default-features = false, features = ["alloc"] }

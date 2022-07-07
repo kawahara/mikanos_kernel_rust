@@ -1,5 +1,6 @@
 use crate::logger::Level as LogLevel;
 use crate::pci::{Device, Devices, MsiDeliveryMode, MsiTriggerMode};
+use crate::queue::{event_queue, QueueEvent, QueueEventType};
 use crate::sync::once_cell::OnceCell;
 use crate::{log, mouse, pci};
 use core::option::Option::{None, Some};
@@ -10,17 +11,21 @@ use x86_64::structures::idt::InterruptStackFrame;
 
 static XHC: OnceCell<SpinMutex<&'static mut XhciController>> = OnceCell::uninit();
 
+pub fn xhc() -> &'static SpinMutex<&'static mut XhciController> {
+    XHC.get()
+}
+
 fn notify_end_of_interrupt() {
     let mut memory = Volatile::new(unsafe { (0xfee000b0 as *mut u32).as_mut().unwrap() });
     memory.write(0);
 }
 
 pub extern "x86-interrupt" fn xhc_interrupt_handler(_stack_frame: InterruptStackFrame) {
-    if let Some(mut xhc) = XHC.get().try_lock() {
-        while xhc.has_event() {
-            xhc.process_event();
-        }
-    }
+    event_queue()
+        .push(QueueEvent {
+            event_type: QueueEventType::InterruptXHCI,
+        })
+        .unwrap();
     notify_end_of_interrupt();
 }
 

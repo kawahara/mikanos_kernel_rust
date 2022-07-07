@@ -17,6 +17,7 @@ pub mod memory_manager;
 pub mod mouse;
 pub mod paging;
 pub mod pci;
+pub mod queue;
 pub mod segments;
 pub mod sync;
 pub mod xhc;
@@ -25,6 +26,7 @@ use crate::console::initialize_console;
 use crate::graphics::{FrameBuffer, Graphics, PixelColor, Vector2D};
 use crate::logger::Level as LogLevel;
 use crate::memory::{MemoryDescriptor, MemoryMap, MemoryType};
+use crate::queue::{event_queue, QueueEventType};
 use core::panic::PanicInfo;
 
 fn hlt_loop() {
@@ -88,14 +90,45 @@ extern "C" fn kernel_main2(fb: *mut FrameBuffer, mc: *const MemoryMap) {
     paging::init();
     let mc = unsafe { *mc };
     memory_manager::init(&mc);
+    queue::init();
 
     interrupt::init();
     log!(LogLevel::Info, "Load PCI devices\n");
     let devices = pci::scan_all_bus().expect("Failed to scan PCI devices");
     xhc::init(&devices).expect("Failed to init xHC device");
-    x86_64::instructions::interrupts::enable();
 
-    hlt_loop();
+    loop {
+        // cli
+        x86_64::instructions::interrupts::disable();
+
+        let queue = event_queue();
+        if queue.is_empty() {
+            // sti
+            x86_64::instructions::interrupts::enable();
+            // hlt
+            x86_64::instructions::hlt();
+            continue;
+        }
+
+        let event = queue.pop().unwrap();
+
+        // sti
+        x86_64::instructions::interrupts::enable();
+        match event.event_type {
+            QueueEventType::InterruptXHCI => {
+                if let Some(mut xhc) = xhc::xhc().try_lock() {
+                    while xhc.has_event() {
+                        xhc.process_event();
+                    }
+                }
+            }
+        }
+    }
+
+    #[allow(unreachable_code)]
+    {
+        hlt_loop();
+    }
 }
 
 #[panic_handler]
