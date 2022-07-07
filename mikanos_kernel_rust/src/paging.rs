@@ -1,3 +1,5 @@
+use x86_64::structures::paging::PageSize;
+
 const PAGE_SIZE_4K: u64 = 4096;
 const PAGE_SIZE_2M: u64 = 512 * PAGE_SIZE_4K;
 const PAGE_SIZE_1G: u64 = 512 * PAGE_SIZE_2M;
@@ -26,6 +28,22 @@ pub fn init() {
             }
         }
         set_cr3(&PML4_TABLE.0[0] as *const u64 as u64);
+    }
+}
+
+pub fn as_virt_addr(addr: x86_64::PhysAddr) -> Option<x86_64::VirtAddr> {
+    if addr.as_u64() < x86_64::structures::paging::Size1GiB::SIZE * 64 {
+        Some(x86_64::VirtAddr::new(addr.as_u64()))
+    } else {
+        None
+    }
+}
+
+pub fn as_phys_addr(addr: x86_64::VirtAddr) -> Option<x86_64::PhysAddr> {
+    if addr.as_u64() < x86_64::structures::paging::Size1GiB::SIZE * 64 {
+        Some(x86_64::PhysAddr::new(addr.as_u64()))
+    } else {
+        None
     }
 }
 

@@ -1,10 +1,10 @@
+use crate::{printk, MemoryDescriptor, MemoryMap, MemoryType};
 use core::mem;
+use spin::mutex::{SpinMutex, SpinMutexGuard};
 
-const MAX_PHYSICAL_MEMORY_BYTES: usize = 128 * 1024 * 1024 * 1024;
 // 128GiB
-const BYTES_PER_FRAME: usize = 4096;
-// 4KiB
-const FRAME_COUNT: usize = MAX_PHYSICAL_MEMORY_BYTES / BYTES_PER_FRAME;
+const MAX_PHYSICAL_MEMORY_BYTES: usize = 128 * 1024 * 1024 * 1024;
+const FRAME_COUNT: usize = MAX_PHYSICAL_MEMORY_BYTES / FrameId::SIZE;
 
 type MapLine = usize;
 
@@ -15,12 +15,19 @@ const MAP_LINE_COUNT: usize = FRAME_COUNT / BITS_PER_MAP_LINE;
 pub struct FrameId(usize);
 
 impl FrameId {
-    pub fn from_physical_address(address: usize) -> Self {
-        Self(address / BYTES_PER_FRAME)
+    pub fn from_physical_address(addr: x86_64::PhysAddr) -> Self {
+        Self(addr.as_u64() as usize / FrameId::SIZE)
+    }
+
+    pub fn to_physical_address(&self) -> x86_64::PhysAddr {
+        x86_64::PhysAddr::new((self.0 * FrameId::SIZE) as u64)
     }
 
     pub const MIN: Self = Self(1);
     pub const MAX: Self = Self(FRAME_COUNT);
+
+    // 4KiB
+    pub const SIZE: usize = 4096;
 }
 
 pub struct BitmapMemoryManager {
@@ -40,6 +47,7 @@ impl BitmapMemoryManager {
 
     pub fn allocate(&mut self, num_frames: usize) -> Result<FrameId, ()> {
         let mut start_frame_id = self.begin.0;
+        printk!("Allocate!!\n");
         'search: loop {
             for i in 0..num_frames {
                 if start_frame_id + 1 >= self.end.0 {
@@ -72,7 +80,7 @@ impl BitmapMemoryManager {
     }
 
     pub fn mark_allocated_in_bytes(&mut self, start_frame: &FrameId, bytes: usize) {
-        self.mark_allocated(start_frame, bytes / BYTES_PER_FRAME);
+        self.mark_allocated(start_frame, bytes / FrameId::SIZE);
     }
 
     pub fn set_memory_range(&mut self, range_begin: FrameId, range_end: FrameId) {
@@ -97,4 +105,48 @@ impl BitmapMemoryManager {
             self.alloc_map[line_index] &= !(1 << bit_index);
         }
     }
+}
+
+static MEMORY_MANAGER: SpinMutex<BitmapMemoryManager> = SpinMutex::new(BitmapMemoryManager::new());
+
+pub fn memory_manager() -> SpinMutexGuard<'static, BitmapMemoryManager> {
+    MEMORY_MANAGER.lock()
+}
+
+pub fn init(mc: &MemoryMap) {
+    let mut mm = MEMORY_MANAGER.try_lock().unwrap();
+
+    let mut phys_available_end: usize = 0;
+    let mut iter = mc.buffer;
+
+    while iter < unsafe { mc.buffer.add(mc.map_size as usize) } {
+        let desc = unsafe { *(iter as *const MemoryDescriptor) };
+        let phys_start = desc.physical_start as usize;
+        let phys_end = desc.physical_end() as usize;
+
+        if phys_available_end < phys_start {
+            mm.mark_allocated_in_bytes(
+                &FrameId::from_physical_address(x86_64::PhysAddr::new(phys_available_end as u64)),
+                phys_start - phys_available_end,
+            )
+        }
+
+        if desc.memory_type == MemoryType::EfiBootServicesCode
+            || desc.memory_type == MemoryType::EfiBootServicesData
+            || desc.memory_type == MemoryType::EfiConventionalMemory
+        {
+            phys_available_end = phys_end;
+        } else {
+            mm.mark_allocated_in_bytes(
+                &FrameId::from_physical_address(x86_64::PhysAddr::new(phys_start as u64)),
+                phys_end - phys_start,
+            )
+        }
+
+        iter = unsafe { iter.add(mc.descriptor_size as usize) };
+    }
+    mm.set_memory_range(
+        FrameId::MIN,
+        FrameId::from_physical_address(x86_64::PhysAddr::new(phys_available_end as u64)),
+    );
 }
