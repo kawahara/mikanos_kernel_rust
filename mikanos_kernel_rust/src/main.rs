@@ -25,8 +25,6 @@ use crate::console::initialize_console;
 use crate::graphics::{FrameBuffer, Graphics, PixelColor, Vector2D};
 use crate::logger::Level as LogLevel;
 use crate::memory::{MemoryDescriptor, MemoryMap, MemoryType};
-use alloc::boxed::Box;
-use alloc::string::String;
 use core::panic::PanicInfo;
 
 fn hlt_loop() {
