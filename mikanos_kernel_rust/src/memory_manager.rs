@@ -47,7 +47,6 @@ impl BitmapMemoryManager {
 
     pub fn allocate(&mut self, num_frames: usize) -> Result<FrameId, ()> {
         let mut start_frame_id = self.begin.0;
-        printk!("Allocate!!\n");
         'search: loop {
             for i in 0..num_frames {
                 if start_frame_id + 1 >= self.end.0 {
