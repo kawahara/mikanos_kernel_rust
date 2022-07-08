@@ -1,4 +1,5 @@
 use crate::fonts::FONTS;
+use core::ops::{Add, AddAssign};
 
 #[derive(Debug, Copy, Clone)]
 #[repr(u32)]
@@ -34,6 +35,30 @@ pub struct PixelColor(pub u8, pub u8, pub u8);
 pub struct Vector2D<T> {
     pub x: T,
     pub y: T,
+}
+
+impl<T, U> Add<Vector2D<U>> for Vector2D<T>
+where
+    T: Add<U>,
+{
+    type Output = Vector2D<T::Output>;
+
+    fn add(self, rhs: Vector2D<U>) -> Self::Output {
+        Vector2D {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+}
+
+impl<T, U> AddAssign<Vector2D<U>> for Vector2D<T>
+where
+    T: AddAssign<U>,
+{
+    fn add_assign(&mut self, rhs: Vector2D<U>) {
+        self.x += rhs.x;
+        self.y += rhs.y;
+    }
 }
 
 #[derive(Copy, Clone)]

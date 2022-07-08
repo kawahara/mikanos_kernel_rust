@@ -11,6 +11,7 @@ pub mod cxx_support;
 pub mod fonts;
 pub mod graphics;
 pub mod interrupt;
+pub mod layer;
 pub mod logger;
 pub mod memory;
 pub mod memory_manager;
@@ -20,6 +21,7 @@ pub mod pci;
 pub mod queue;
 pub mod segments;
 pub mod sync;
+pub mod window;
 pub mod xhc;
 
 use crate::console::initialize_console;
@@ -91,6 +93,8 @@ extern "C" fn kernel_main2(fb: *mut FrameBuffer, mc: *const MemoryMap) {
     let mc = unsafe { *mc };
     memory_manager::init(&mc);
     queue::init();
+
+    // window & layer
 
     interrupt::init();
     log!(LogLevel::Info, "Load PCI devices\n");
