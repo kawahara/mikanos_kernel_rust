@@ -52,17 +52,18 @@ impl Layer {
     }
 }
 
-#[derive(Debug)]
 struct LayerManager {
     layers: BTreeMap<LayerId, Layer>,
     layer_stack: Vec<LayerId>,
+    graphics: Graphics,
 }
 
 impl LayerManager {
-    fn new() -> Self {
+    fn new(graphics: &Graphics) -> Self {
         Self {
             layers: BTreeMap::new(),
             layer_stack: vec![],
+            graphics: *graphics,
         }
     }
 
@@ -71,10 +72,20 @@ impl LayerManager {
         self.layers.insert(id, layer);
     }
 
-    fn draw(&self, graphic: &mut Graphics) {
+    fn set_position(&mut self, id: LayerId, pos: usize) {
+        if !self.layers.contains_key(&id) {
+            // not registered
+            return;
+        }
+        self.layer_stack.retain(|elem| *elem != id);
+        let new_pos = usize::min(pos, self.layer_stack.len());
+        self.layer_stack.insert(new_pos, id);
+    }
+
+    fn draw(&mut self) {
         for id in &self.layer_stack {
             if let Some(layer) = self.layers.get(&id) {
-                layer.draw(graphic);
+                layer.draw(&mut self.graphics);
             }
         }
     }
